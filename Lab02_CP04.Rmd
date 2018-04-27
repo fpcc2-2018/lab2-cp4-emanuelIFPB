@@ -8,6 +8,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+## Objetivo
+
+Usaremos um problema de exploração de dados que a Wikimedia Foundation usou em 2016 para recrutar pessoas para trabalhar no departamento de descoberta deles. Nossa missão é seguir as instruções colocadas na tarefa original, respondendo as 4 perguntas que são colocadas lá.
+
+
 ## Importando as bibliotecas
 
 ```{r, warning=FALSE, message=FALSE}
@@ -17,6 +22,7 @@ library(here)
 library(lubridate)
 library(knitr)
 library(ggplot2)
+library(scales)
 
 theme_set(theme_bw())
 
@@ -29,37 +35,47 @@ dados = read_csv(here::here("data/search_data.csv")) %>%
 head(100000)
 ```
 
+Para facilitar nossa análise, iremos adicionar uma coluna referente a data realizada na pesquisa (excluindo a informação de horas), para isso iremos utilizar a variável nativa do dataset ```{r}
+session_start_date ```
 
-## Tratando os dados...
-
-01) Retirar os registros onde o local do primeiro click (first_click) é maior que a quantidade de resultados da busca (results). Ou seja, um comportamento que não deveria acontecer. 
-
-```{r, warning=FALSE, message=FALSE}
-trash = dados %>%
-  filter(first_click > results )
-```
-
-02) Retirar os registros onde houveram clicks (num_clicks > 0), mas não existe registro do primeiro click (first_click). Ou seja, um comportamento que não deveria acontecer. 
-
-
-```{r, warning=FALSE, message=FALSE}
-trash2 =  dados %>%
-  filter(num_clicks > 0 & is.na(first_click) )
-```
-
-
-03) Vamos também formatar a coluna referente a data da busca
 
 ```{r, warning=FALSE, message=FALSE}
 dados <- mutate(dados, date = date(session_start_date))
 ```
 
 
+## Tratando os dados
+
+
+Vamos inicialmente verificar comportamentos indesejados:
+
+01) Retirar os registros onde o local do primeiro click (```{r} first_click```) é maior que a quantidade de resultados da busca (```{r} results```). Ou seja, um comportamento que não deveria acontecer. 
+
+```{r, warning=FALSE, message=FALSE}
+trash = dados %>%
+  filter(first_click > results )
+trash
+```
+
+02) Retirar os registros onde houveram clicks (```{r} num_clicks``` > 0), mas não existe registro do primeiro click (```{r} first_click```). Ou seja, um comportamento que não deveria acontecer. 
+
+
+```{r, warning=FALSE, message=FALSE}
+trash2 =  dados %>%
+  filter(num_clicks > 0 & is.na(first_click) )
+trash2
+```
+
+Agora vamos limpar nosso dataset retirando esses registros indesejados na análise:
+
+```{r}
+dados = dados %>%
+  filter((first_click <= results) | (is.na(first_click) & num_clicks == 0))
+```
 
 
 
 ## Variáveis utilizadas na análise
-
 
 ```{r} group ```            : Um marcador ("a" ou "b");
 
@@ -71,6 +87,7 @@ dados <- mutate(dados, date = date(session_start_date))
 
 ```{r} session_start_date```: Data e hora do início da pesquisa.
 
+```{r}session_length```     : Duração da sessão
 
 
 ## 01) Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
@@ -91,18 +108,21 @@ dados %>%
      geom_jitter(alpha = .4, size = 2)  + labs(y= "Numero de Clicks", x="Grupos", title="Figura 1 - Numero de clicks para os grupos A e B")
 ```
 
-Podemos observar que existem mais ocorrências de buscas no grupo A em relação ao grupo B. Para finalizar nossa análise, vamos avaliar dia após dia o comportamento da variável ```{r} num_clicks```
+Podemos observar que existem mais ocorrências de buscas no grupo A em relação ao grupo B. Uma terceira análise seria avaliar dia após dia o comportamento da variável ```{r} num_clicks``` para cada grupo ```{r} group```
 
 
 ```{r, warning=FALSE, message=FALSE}
 dados %>%
-    group_by(round_date(session_start_date , unit="day"), group) %>%  
+    group_by(round_date(date , unit="day"), group) %>%  
     summarise(somatorio = sum(num_clicks)) %>% 
     head()
 
 ```
 
 Como podemos observar, em nossa amostra de três dias (01, 02 e 03 de Março de 2016) sempre o número de clicks do grupo A superou do grupo B. 
+
+COnclusão: A média geral de clicks é maior para o grupo A (ver distribuição de quartis). Como o número de ocorrências é maior para este grupo (Ver Figura 1), decidimos analisar por dia o comportamento da variável ```{r} num_clicks```. Finalizamos nossa análise verificando que isoladando os dias, os clicks no grupo A também são maiores que o grupo B.
+
 
 ## 02) Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
 
@@ -112,22 +132,83 @@ Primeiro vamos analisar os quartis da variável  ```{r} first_click```
 with(dados, tapply(first_click, group, summary))
 ```
 
-Podemos observar que em pesquisas realizadas no grupo B os usuários clicam em resultados mais iniciais (Mean 1.983) em relação as pesquisas do grupo A (Mean 4.85)
-
-Como isso muda no dia-a-dia?
+Podemos observar que em pesquisas realizadas no grupo B os usuários clicam em resultados mais iniciais (Mean 1.967) em relação as pesquisas do grupo A (Mean 2.41). Para ter mais insumos na análise, vamos analisar a distribuição da variável  ```{r} first_click ```. OBS: decidimos retirar os outliers, portanto consideramos até a posição 20 do primeiro click. 
 
 
 
 ```{r, warning=FALSE, message=FALSE}
-ggplot(data=dados, aes(x=day(session_start_date), y=first_click, fill=group)) +   geom_bar(stat="identity", position=position_dodge()) +  labs(y= "Quantidade primeiros clicks", x="Dia", title="Figura 2 - Análise do primeiro click por dia e grupo  ") 
+dados  %>%
+  filter(first_click < 20 & !is.na(first_click)) %>%
+  ggplot(aes(x = first_click)) +
+  geom_bar() + labs(y= "Qaantidade", x="Primeiro click", title="Figura 2 - Comportamento variável First_click")
 ```
 
-Podemos observar qua na maioria dos casos o usuário clica no primeiro link após a busca
+Podemos observar que na maioria das buscas, o primeiro link é o escolhido como primeiro click pelos usuários.  Como isso muda no dia-a-dia?
+
+
+```{r, warning=FALSE, message=FALSE}
+dados  %>%
+  filter(first_click < 20 & !is.na(first_click)) %>%
+  arrange(date) %>%
+  ggplot(aes(x =  first_click, fill = date )) +
+  geom_histogram(binwidth = 2)  +
+  facet_grid(~ date) +
+  labs(title="Figura 3 - Distribuição por dia", x="Primeiro Clique",  y="Quantidade") + theme_gray()
+
+```
+
+  
+Conclusão: Podemos observar que em todos dos dias o usuário clica pela primeira vez na maioria das vezes no primeiro link após a busca.
 
 
 ## 03) Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
 
-Inicialmente vamos analisar independente de grupos:
+Primeiro vamos analisar os quartis da variável ```{r} results```
 
 
+```{r, warning=FALSE, message=FALSE}
+with(dados, tapply(results, group, summary))
+```
+
+Diferente das perguntas anteriores, as informações de quartis não ajuda para análise dessa pergunta. 
+
+Vamos plotar um gráfico para analisar melhor os dados. 
+
+
+```{r, warning=FALSE, message=FALSE}
+
+group_results <- dados %>%
+  group_by(group, results) %>%
+  summarise(n = n()) %>% 
+  mutate(group_results = n / sum(n) * 100) 
+
+
+group_results  %>% 
+  filter(results == 0) %>% 
+  ggplot(aes(x = group, y = group_results )) + 
+  geom_col(width = .4,  fill = "darkcyan") +
+   labs(title="Figura 4 - Distribuição dos resultados das buscas com valor zero",
+       x="Grupos",  y="Taxa de resultados zero")
+
+```
+
+Conclusão: Como podemos observar na Figura 4, os grupos A e B tem praticamente a mesma quantidade de buscas onde o resultado é zero.  
+
+## 04) A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
+
+A duração da sessão é representada pela variável ```{r}session_length```, vamos analisar a relação com a variável ```{r}num_clicks```para verificar se em sessões maiores temos também maiores números de clicks. 
+
+
+Vamos analisar as correlaçÕes das variáveis segundo pearson, spearman e kendall:
+
+```{r, warning=FALSE, message=FALSE}
+#cor(session_length, dados$num_clicks,  method = "spearman")
+#cor(session_length, dados$num_clicks,  method = "kendall")
+#cor(session_length, dados$num_clicks,  method = "pearson")
+
+```
+
+Usando o teste de Pearson verificamos que o p-value = XXXX, interpretamos esse valor como uma correlação XXXXX
+
+Analisando as variáveis percebeu-se o comportamento não linerar, portanto vamos analisar também os testes de correlação de spearman e kendall. Assim como o testes de Pearson, a correlação é forte quando próximas dos valores extremos 1 ou -1.....
 
