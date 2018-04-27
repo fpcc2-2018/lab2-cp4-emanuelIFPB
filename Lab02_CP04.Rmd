@@ -1,5 +1,5 @@
 ---
-title: "Lab 02 - CP 02 - Emanuel Dantas"
+title: "Lab 02 - CP 04 - Emanuel Dantas"
 output: html_document
 ---
 
@@ -30,6 +30,37 @@ head(100000)
 head(dados)
 names(dados)
 ```
+
+
+## Tratando os dados...
+
+01) Retirar os registros onde o local do primeiro click (first_click) é maior que a quantidade de resultados da busca (results). Ou seja, um comportamento que não deveria acontecer. 
+
+```{r}
+trash = dados %>%
+  filter(first_click > results )
+trash
+```
+
+02) Retirar os registros onde houveram clicks (num_clicks > 0), mas não existe registro do primeiro click (first_click). Ou seja, um comportamento que não deveria acontecer. 
+
+
+```{r}
+trash2 =  dados %>%
+  filter(num_clicks > 0 & is.na(first_click) )
+trash2
+```
+
+
+03) Vamos também formatar a coluna referente a data da busca
+
+```{r}
+dados <- mutate(dados, date = date(session_start_date))
+```
+
+
+
+
 
 ## Variáveis utilizadas na análise
 
@@ -65,6 +96,7 @@ dados %>%
 ```
 
 Podemos observar que existem mais ocorrências de buscas no grupo A em relação ao grupo B. Para finalizar nossa análise, vamos avaliar dia após dia o comportamento da variável ```{r} num_clicks```
+
 
 ```{r, warning=FALSE}
 dados %>%
