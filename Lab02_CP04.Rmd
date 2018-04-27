@@ -1,5 +1,5 @@
 ---
-title: "Lab02_CP04"
+title: "Lab 02 - CP 02 - Emanuel Dantas"
 output: html_document
 ---
 
@@ -7,22 +7,99 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Importando as bibliotecas
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r, warning=FALSE}
 
-```{r cars}
-summary(cars)
+library(tidyverse)
+library(here)
+library(lubridate)
+library(knitr)
+library(ggplot2)
+
+theme_set(theme_bw())
+
 ```
 
-## Including Plots
+## Carregando os dados para análise
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r, warning=FALSE}
+dados = read_csv(here::here("data/search_data.csv")) %>%
+head(100000)
+head(dados)
+names(dados)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Variáveis utilizadas na análise
+
+
+```{r} group ```            : Um marcador ("a" ou "b");
+
+```{r} results ```          : Número de ocorrências retornadas para o usuário;
+
+```{r} num_clicks```        : Número de ocorrências clicadas pelo usuário;
+
+```{r} first_click```       : Posição da ocorrência que o usuário clicou primeiro.
+
+```{r} session_start_date```: Data e hora do início da pesquisa.
+
+
+
+## 01) Qual é a taxa de cliques geral diária? Como isso varia entre os grupos?
+
+Primeiro vamos analisar os quartis da variável ```{r} num_clicks```
+
+```{r, warning=FALSE}
+with(dados, tapply(num_clicks, group, summary))
+```
+
+Podemos observar que em média o grupo A tem maior número de clicks que o grupo B. Porém, o número diferente de ocorrências (pesquisas no site de busca) do grupo A e B podem estar enviesando o resultado. Precisamos nos aprofundar na análise. 
+
+Na Figura 01 podemos observar a distribuição da quantidade de clicks para cada grupo
+
+```{r, warning=FALSE}
+dados %>% 
+    ggplot(aes(x = group, y = num_clicks)) + 
+     geom_jitter(alpha = .4, size = 2)  + labs(y= "Numero de Clicks", x="Grupos", title="Figura 1 - Numero de clicks para os grupos A e B")
+```
+
+Podemos observar que existem mais ocorrências de buscas no grupo A em relação ao grupo B. Para finalizar nossa análise, vamos avaliar dia após dia o comportamento da variável ```{r} num_clicks```
+
+```{r, warning=FALSE}
+dados %>%
+    group_by(round_date(session_start_date , unit="day"), group) %>%  
+    summarise(somatorio = sum(num_clicks)) %>% 
+    head()
+
+```
+
+Como podemos observar, em nossa amostra de três dias (01, 02 e 03 de Março de 2016) sempre o número de clicks do grupo A superou do grupo B. 
+
+## 02) Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+
+Primeiro vamos analisar os quartis da variável  ```{r} first_click```
+
+```{r, warning=FALSE}
+with(dados, tapply(first_click, group, summary))
+```
+
+Podemos observar que em pesquisas realizadas no grupo B os usuários clicam em resultados mais iniciais (Mean 1.983) em relação as pesquisas do grupo A (Mean 4.85)
+
+Como isso muda no dia-a-dia?
+
+
+
+```{r, warning=FALSE}
+ggplot(data=dados, aes(x=day(session_start_date), y=first_click, fill=group)) +   geom_bar(stat="identity", position=position_dodge()) +  labs(y= "Quantidade primeiros clicks", x="Dia", title="Figura 2 - Análise do primeiro click por dia e grupo  ") 
+```
+
+Podemos observar qua na maioria dos casos o usuário clica no primeiro link após a busca
+
+
+## 03) Qual é a taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+Inicialmente vamos analisar independente de grupos:
+
+
+
