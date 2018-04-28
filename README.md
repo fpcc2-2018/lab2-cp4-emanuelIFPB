@@ -1,3 +1,6 @@
+
+Análise realizada: http://rpubs.com/Emanuel_13/384222
+
 # Sessões, buscas e navegação na wikimedia
 
 Este repo é a semente para uma análise de padrões de busca e navegação em páginas de projetos da wikimedia (provavelmente wikipedia).
