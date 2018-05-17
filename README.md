@@ -1,5 +1,7 @@
 
-Análise realizada: http://rpubs.com/Emanuel_13/384222
+Análise inicial realizada (Lab2 - CP4): http://rpubs.com/Emanuel_13/384222
+
+Análise sobre Intervalos de Confiança (Lab3 - CP1): http://rpubs.com/Emanuel_13/389983
 
 # Sessões, buscas e navegação na wikimedia
 
